@@ -30,6 +30,8 @@ def main():
     log_handlers = []
     if args.syslog:
         log_handlers.append(logging.handlers.SysLogHandler(address='/dev/log'))
+    else:
+        log_handlers.append(logging.StreamHandler())
 
     logging.basicConfig(level=args.loglevel,
                         format='tmb[%(process)d]: %(name)s %(message)s',

@@ -4,8 +4,12 @@ import signal
 import time
 import sys
 import datetime
+import logging
+import re
 
 from pirc522 import RFID
+
+logger = logging.getLogger('nfc_reader')
 
 class NFCReader:
     """
@@ -20,6 +24,27 @@ class NFCReader:
     def __del__(self): 
         self._rdr.cleanup()
 
+    def __on_detected(self, uid):
+        hex_uid = ''.join('{:02x}'.format(x) for x in uid)
+        logger.info("Detected : " + hex_uid)
+        playlists = self._api.playlists_as_list()
+        found = False
+        for playlist in playlists:
+            if re.search(hex_uid, playlist['name'], re.IGNORECASE):
+                logger.info("Playlist : {} is available.".format(hex_uid))
+                items = self._api.playlists_get_items(playlist['uri'])
+                for item in items:
+                    self._api.tracklist_add(item['uri'])
+                self._api.play()
+                found = True
+        if not found:
+            logger.info("Playlist : {} is not available.".format(hex_uid))
+    
+    def __on_lost(self, uid):
+        hex_uid = ':'.join('{:02x}'.format(x) for x in uid)
+        logger.info("Lost : " + hex_uid)
+        self._api.tracklist_clear()
+
     def run(self):
         last_uid = None
         last_not_detected = None
@@ -29,20 +54,16 @@ class NFCReader:
                 last_not_detected = None
                 if last_uid != uid:
                     last_uid = uid
-                    hex_uid = ':'.join('{:02x}'.format(x) for x in last_uid)
-                    print('Detected UID: ' + hex_uid)
+                    self.__on_detected(last_uid)
+                    
             else:
                 if last_uid is not None:
                     now = datetime.datetime.now()
                     if last_not_detected is None:
                         last_not_detected = now
                     elif (now - last_not_detected).total_seconds() > 3.0:
-                        hex_uid = ':'.join('{:02x}'.format(x) for x in last_uid)
-                        print('Lost UID: ' + hex_uid)
+                        self.__on_lost(last_uid)
                         last_uid = None
                         last_not_detected = None
-                    
-                    #if last_not_detected is not None:
-                    #    print('Not detected: ' + str(now - last_not_detected) )
 
             time.sleep(0.01)

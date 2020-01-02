@@ -6,6 +6,8 @@ import json
 
 import logging
 
+logger = logging.getLogger('mopidy_api')
+
 class MopidyAPI:
     """
     Api class
@@ -22,14 +24,15 @@ class MopidyAPI:
             "jsonrpc": "2.0",
             "id": request_id,
         }
-        
+        logger.info("post: %s:%s", method, str(params))
         response = requests.post(self._url, json=payload).json()
 
         if 'error' in response:
-            logging.error(response['error'])
+            logger.error(response['error'])
             raise TypeError
 
         if response["jsonrpc"] == "2.0" and response["id"] == request_id and 'result' in response:
+            logger.debug("result: %s", response["result"])
             return response["result"]
         
         raise TypeError
@@ -80,6 +83,34 @@ class MopidyAPI:
     def get_state(self):
         try:
             return self.__post("core.playback.get_state", [])
+        except TypeError:
+            pass
+        return None
+
+    def playlists_as_list(self):
+        try:
+            return self.__post("core.playlists.as_list", [])
+        except TypeError:
+            pass
+        return None
+    
+    def playlists_get_items(self, uri):
+        try:
+            return self.__post("core.playlists.get_items", {'uri': uri})
+        except TypeError:
+            pass
+        return None
+    
+    def tracklist_clear(self):
+        try:
+            return self.__post("core.tracklist.clear", [])
+        except TypeError:
+            pass
+        return None
+
+    def tracklist_add(self, uri):
+        try:
+            return self.__post("core.tracklist.add", {'uris': [uri]})
         except TypeError:
             pass
         return None

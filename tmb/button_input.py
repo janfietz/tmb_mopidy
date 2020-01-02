@@ -2,100 +2,91 @@
 """
 
 import RPi.GPIO as GPIO
-import time
-import collections
+import asyncio
 
 import logging
 
+logger = logging.getLogger('button_input')
 
-class Button:
-    """
-    Button class
-    """
-    def __init__(self, pin , action, targetQueue):        
-        GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        GPIO.add_event_detect(pin, GPIO.BOTH, callback=self.__handler, bouncetime=30)
-        self._action = action
-        self._targeQueue = targetQueue
+def next(api, pressed):
+    if pressed:
+        logger.debug("Pressed next")
+        api.next()
+    else:
+        logger.debug("Released next")
 
-    def __handler(self, channel):
-        self._targeQueue.append(dict(type = self._action, args = dict(pressed = GPIO.input(channel) == 1)))
+def prev(api, pressed):
+    if pressed:
+        logger.debug("Pressed prev")
+        api.previous()
+    else:
+        logger.debug("Released prev")
+
+def main(api, pressed):
+    if pressed:
+        logger.debug("Pressed main")
+        state = api.get_state()
+        if state == "stopped":
+            api.play()
+        if state == "playing":
+            api.pause()
+        if state == "paused":
+            api.resume()
+    else:
+        logger.debug("Released main")
+
+def volup(api, pressed):
+    if pressed:
+        logger.debug("Pressed volup")
+        try:
+            volume = api.get_volume()
+            api.set_volume(max(0, volume + 5))
+        except TypeError:
+            pass
+    else:
+        logger.debug("Released volup")
+
+def voldown(api, pressed):
+    if pressed:
+        logger.debug("Pressed voldown")
+        try:
+            volume = api.get_volume()
+            api.set_volume(max(0, volume - 10))
+        except TypeError:
+            pass
+    else:
+        logger.debug("Released volup")
 
 class ButtonInput():
     """
     Button input class
     """
+    def __init__(self, api):        
+        self._api = api        
 
-    def __init__(self, api):
+    def __init_button(self, pin, funct):
+        GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
+        loop = asyncio.get_event_loop()
+
+        def handler(channel):
+            loop.call_soon_threadsafe(funct, self._api, GPIO.input(channel) == 1)
+
+        GPIO.add_event_detect(pin, GPIO.BOTH, callback=handler, bouncetime=30)    
+            
+    def run(self):
         GPIO.setmode(GPIO.BCM)
 
-        self._events = collections.deque()
-        self._btn_next = Button(25, "next", self._events)
-        self._btn_prev = Button(23, "prev", self._events)
-        self._btn_main = Button(24, "main", self._events)
-        self._btn_volup = Button(26, "volup", self._events)
-        self._btn_voldown = Button(22, "voldown", self._events)
-        self._api = api
+        self.__init_button(25, next)
+        self.__init_button(23, prev)
+        self.__init_button(24, main)
+        self.__init_button(26, volup)
+        self.__init_button(22, voldown)
+
+        asyncio.get_event_loop().run_forever()
+
+        GPIO.cleanup()
     
-    def __processEvent(self, event):
-        try:
-            getattr(self, "%s" % event['type'])(**event['args'])
-        except AttributeError as e:
-            logging.error(e)
-
-    def run(self):
-        try:
-            while True:
-                try:
-                    processQueue = True
-                    while processQueue:
-                        self.__processEvent(self._events.popleft())
-                except IndexError:
-                    pass
-
-                time.sleep(0.1)
-        except KeyboardInterrupt:
-            pass
-
-
-    def next(self, pressed):
-        if pressed:
-            print("next")
-            self._api.next()
-    
-    def prev(self, pressed):
-        if pressed:
-            print("prev")
-            self._api.previous()
-
-    def main(self, pressed):
-        if pressed:
-            state = self._api.get_state()
-            if state == "stopped":
-                self._api.play()
-            if state == "playing":
-                self._api.pause()
-            if state == "paused":
-                self._api.resume()
-            print("main")            
-
-    def volup(self, pressed):
-        if pressed:
-            try:
-                volume = self._api.get_volume()
-                self._api.set_volume(max(0, volume + 5))
-            except TypeError:
-                pass
-            print("volup")
-
-    def voldown(self, pressed):
-        if pressed:
-            try:
-                volume = self._api.get_volume()
-                self._api.set_volume(max(0, volume - 10))
-            except TypeError:
-                pass
-            print("voldown")
 
 
 

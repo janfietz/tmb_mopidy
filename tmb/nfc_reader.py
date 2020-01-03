@@ -53,7 +53,10 @@ class NFCReader:
                 found = True
         if not found:
             logger.info("Playlist : {} is not available.".format(hex_uid))
-            self._status['playlist'] = None
+            new_playlist = self._api.playlists_create(hex_uid, 'm3u')
+            if new_playlist is not None:
+                logger.info("Playlist : {} created.".format(hex_uid))
+            self._status['playlist'] = new_playlist
         
         write_status(self._status)
     

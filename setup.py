@@ -30,5 +30,5 @@ setup(
     author='janfietz',
     author_email='janfietz@gmail.com',
     license='MIT',
-    install_requires=['spidev', 'RPi.GPIO', 'pi-rc522'],
+    install_requires=['spidev', 'RPi.GPIO', 'pi-rc522>=2.3.1'],
 )

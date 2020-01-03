@@ -101,6 +101,13 @@ class MopidyAPI:
             pass
         return None
     
+    def playlists_create(self, name, uri_scheme=None):
+        try:
+            return self.__post("core.playlists.create", {'name': name, 'uri_scheme': uri_scheme})
+        except TypeError:
+            pass
+        return None
+    
     def tracklist_clear(self):
         try:
             return self.__post("core.tracklist.clear", [])

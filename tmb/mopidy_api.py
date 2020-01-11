@@ -55,7 +55,7 @@ class MopidyAPI:
     
     def resume(self):
         try:
-            self.__post("core.playback.pause", [])
+            self.__post("core.playback.resume", [])
         except TypeError:
             pass
     
@@ -121,7 +121,7 @@ class MopidyAPI:
 
     def tracklist_add(self, uri):
         try:
-            return self.__post("core.tracklist.add", {'uris': [uri]})
+            return self.__post("core.tracklist.add", {'uris': uri})
         except TypeError:
             pass
         return None

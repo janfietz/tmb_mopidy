@@ -25,16 +25,20 @@ class MopidyAPI:
             "id": request_id,
         }
         logger.info("post: %s:%s", method, str(params))
-        response = requests.post(self._url, json=payload).json()
 
-        if 'error' in response:
-            logger.error(response['error'])
+        try:
+            response = requests.post(self._url, json=payload).json()
+
+            if 'error' in response:
+                logger.error(response['error'])
+                raise TypeError
+
+            if response["jsonrpc"] == "2.0" and response["id"] == request_id and 'result' in response:
+                logger.debug("result: %s", response["result"])
+                return response["result"]
+        except:
             raise TypeError
 
-        if response["jsonrpc"] == "2.0" and response["id"] == request_id and 'result' in response:
-            logger.debug("result: %s", response["result"])
-            return response["result"]
-        
         raise TypeError
 
     def play(self):

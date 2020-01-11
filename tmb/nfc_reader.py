@@ -47,8 +47,10 @@ class NFCReader:
                 logger.info("Playlist : {} is available.".format(hex_uid))
                 self._status['playlist'] = playlist
                 items = self._api.playlists_get_items(playlist['uri'])
+                uris = []
                 for item in items:
-                    self._api.tracklist_add(item['uri'])
+                    uris.append(item['uri'])
+                self._api.tracklist_add(uris)
                 self._api.play()
                 found = True
         if not found:

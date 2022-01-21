@@ -49,15 +49,11 @@ class NFCReader:
     def __del__(self): 
         self._rdr.cleanup()
 
-    def __on_detected(self, uid, playlist_uri):
-        hex_uid = ''.join('{:02x}'.format(x) for x in uid)
-        logger.info("Detected : " + hex_uid)
-        self._status['nfc_uuid'] = hex_uid
+    def _load_m3u_playlist(self, uri):
         playlists = self._api.playlists_as_list()
         found = False
-        search_uri = playlist_uri if playlist_uri else hex_uid
         for playlist in playlists:
-            if re.search(search_uri, playlist['uri'], re.IGNORECASE):
+            if re.search(uri, playlist['uri'], re.IGNORECASE):
                 logger.info("Playlist : {} is available.".format(playlist['name']))
                 self._status['playlist'] = playlist                
                 items = self._api.playlists_get_items(playlist['uri'])
@@ -66,15 +62,40 @@ class NFCReader:
                     uris.append(item['uri'])
                     logger.debug("Queue : add item {0} {1}".format(item['uri'], item['name']))
                 self._api.tracklist_add(uris)
-                self._api.play()
+                
                 found = True
+        return False
+
+    def _load_to_playlist(self, uri):
+        uris = []
+        result = self._api.library_lookup([uri])
+        if result:
+            logger.info("Uri : {} is available.".format(uri))
+            self._status['playlist'] = uri
             
-        if not found and not playlist_uri:
-            logger.info("Playlist : {} is not available.".format(hex_uid))
-            new_playlist = self._api.playlists_create(hex_uid, 'm3u')
-            if new_playlist is not None:
-                logger.info("Playlist : {} created.".format(hex_uid))
-            self._status['playlist'] = new_playlist
+            for track_item in result:
+                if "__model__" in track_item and track_item["__model__"] == "Track":
+                    uris.append(track_item['uri'])
+                    logger.debug("Queue : add item {0} {1}".format(track_item['uri'], track_item['name']))
+        
+        if len(uris) > 0:
+            self._api.tracklist_add(uris)
+            return True
+        return False
+
+    def __on_detected(self, uid, playlist_uri):
+        hex_uid = ''.join('{:02x}'.format(x) for x in uid)
+        logger.info("Detected : " + hex_uid)
+        self._status['nfc_uuid'] = hex_uid
+
+        found = False
+        if playlist_uri.startwith('m3u'):
+            found = self._load_m3u_playlist(playlist_uri)
+        else:
+            found = self._load_to_playlist(playlist_uri)
+
+        if found:
+            self._api.play()
         
         write_status(self._status)
     

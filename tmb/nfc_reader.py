@@ -69,11 +69,11 @@ class NFCReader:
     def _load_to_playlist(self, uri):
         uris = []
         result = self._api.library_lookup([uri])
-        if result:
+        if result and uri in result:
             logger.info("Uri : {} is available.".format(uri))
             self._status['playlist'] = uri
             
-            for track_item in result:
+            for track_item in result[uri]:
                 if "__model__" in track_item and track_item["__model__"] == "Track":
                     uris.append(track_item['uri'])
                     logger.debug("Queue : add item {0} {1}".format(track_item['uri'], track_item['name']))
@@ -89,7 +89,7 @@ class NFCReader:
         self._status['nfc_uuid'] = hex_uid
 
         found = False
-        if playlist_uri.startwith('m3u'):
+        if playlist_uri.startswith('m3u'):
             found = self._load_m3u_playlist(playlist_uri)
         else:
             found = self._load_to_playlist(playlist_uri)
@@ -137,6 +137,9 @@ class NFCReader:
                                     card_data += data
                                 else:
                                     read_error = True
+                                    logger.debug("Read error data: " + str(i))
+                                    break
+
                             if not read_error:
                                 logger.debug("Card read UID: " + str(uid))
                                 playlist = read_playlist_object(card_data)

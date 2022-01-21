@@ -125,3 +125,10 @@ class MopidyAPI:
         except TypeError:
             pass
         return None
+
+    def library_lookup(self, uris):
+        try:
+            return self.__post("core.library.lookup", {'uris': uris})
+        except TypeError:
+            pass
+        return None
